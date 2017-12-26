@@ -36,7 +36,7 @@ class Options():
 
         ### DATABASE OPTIONS ###
         self.parser.add_argument('--db_name', default='celebA')
-
+        self.parser.add_argument('--dataset_root', default='/home/sangdoo/work/dataset')
 
 
     def parse(self):

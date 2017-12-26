@@ -241,14 +241,14 @@ class KeyPatchGanModel():
 
 
     def save_network(self, network, epoch, net_name):
-        save_filename = 'epoch_%s_net_%s_label_%s.pth' % (epoch, net_name)
+        save_filename = 'epoch_%s_net_%s.pth' % (epoch, net_name)
         save_path = os.path.join(self.net_save_dir, save_filename)
         torch.save(network.cpu().state_dict(), save_path)
         if torch.cuda.is_available():
             network.cuda(device_id=self.opts['gpuid'])
 
     def load_network(self, network, epoch, net_name):
-        save_filename = 'epoch_%s_net_%s_label_%s.pth' % (epoch, net_name)
+        save_filename = 'epoch_%s_net_%s.pth' % (epoch, net_name)
         save_path = os.path.join(self.net_save_dir, save_filename)
         network.load_state_dict(torch.load(save_path))
 

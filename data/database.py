@@ -22,7 +22,7 @@ class Dataset():
         if self.db_name == 'celebA':
 
             # Load image list
-            img_path = os.path.join("/home/sangdoo/work/dataset/", 'celebA', "*.jpg")
+            img_path = os.path.join(opts.dataset_root, 'celebA', "*.jpg")
             img_list = glob(img_path)
             self.img_list = np.array(sorted(img_list))
             self.num_imgs = len(self.img_list)
