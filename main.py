@@ -123,9 +123,23 @@ for epoch in range(opts.epoch):
                                        sample_part1_images, sample_part2_images, sample_part3_images,
                                        sample_z, sample_gt_masks, m_weight[epoch])
             model.forward(is_train=False)
-            model.visualize()
+            model.visualize(win_offset=0)
+            model.set_inputs_for_train(test_images, test_images,
+                                       test_part1_images, test_part2_images, test_part3_images,
+                                       test_z, test_gt_masks, m_weight[epoch])
+            model.forward(is_train=False)
+            model.visualize(win_offset=100)
         if (i % 200 == 1):
-            model.save_images()
+            model.set_inputs_for_train(sample_images, sample_images,
+                                       sample_part1_images, sample_part2_images, sample_part3_images,
+                                       sample_z, sample_gt_masks, m_weight[epoch])
+            model.forward(is_train=False)
+            model.save_images(epoch, i, is_test=False)
+            model.set_inputs_for_train(test_images, test_images,
+                                       test_part1_images, test_part2_images, test_part3_images,
+                                       test_z, test_gt_masks, m_weight[epoch])
+            model.forward(is_train=False)
+            model.save_images(epoch, i, is_test=True)
 
     model.save(epoch)
 

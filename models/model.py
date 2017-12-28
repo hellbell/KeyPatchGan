@@ -163,36 +163,80 @@ class KeyPatchGanModel():
         # self.backward_G()
         # self.optimizer_G.step()
 
-    def visualize(self):
+    def visualize(self, win_offset=0):
 
         # show input image
         # show gen image
         # show pred mask
         ups = nn.Upsample(scale_factor=2, mode='nearest')
+        input_image = (ups(self.input_image)[0:8].cpu().data + 1.0) / 2.0
+        image_gen   = (ups(self.image_gen)[0:8].cpu().data + 1.0) / 2.0
+        gen_mask    = (ups(self.gen_mask)[0:8].cpu().data)
+        gt_mask     = (ups(self.gt_mask)[0:8].cpu().data)
+        self.vis.images(input_image, win=win_offset+0, opts=dict(title='input images'))
+        self.vis.images(image_gen,   win=win_offset+1, opts=dict(title='generated images'))
+        self.vis.images(gen_mask,    win=win_offset+2, opts=dict(title='predicted masks'))
+        self.vis.images(gt_mask,     win=win_offset+3, opts=dict(title='gt masks'))
 
-        img1 = (ups(self.input_image)[0:8].cpu().data + 1.0) / 2.0
-        img2 = (ups(self.image_gen)[0:8].cpu().data + 1.0) / 2.0
-        img3 = (ups(self.gen_mask)[0:8].cpu().data)
-        img4 = (ups(self.gt_mask)[0:8].cpu().data)
-        self.vis.images(img1, win=0)
-        self.vis.images(img2, win=1)
-        self.vis.images(img3, win=2)
-        self.vis.images(img4, win=3)
+    def save_images(self, epoch, iter, is_test=False):
+        # ups = nn.Upsample(scale_factor=2, mode='nearest')
+        # input_image = (ups(self.input_image)[0:16].cpu().data + 1.0) / 2.0
+        # image_gen   = (ups(self.image_gen)[0:16].cpu().data + 1.0) / 2.0
+        # gen_mask    = (ups(self.gen_mask)[0:16].cpu().data)
+        # gt_mask     = (ups(self.gt_mask)[0:16].cpu().data)
 
-    def save_images(self):
-        return 0
+        num_img_rows = 7
+        num_img_cols = 16
+
+        input_image = (self.input_image[0:num_img_cols].cpu().data + 1.0) / 2.0
+        input_part1 = (self.input_part1[0:num_img_cols].cpu().data + 1.0) / 2.0
+        input_part2 = (self.input_part2[0:num_img_cols].cpu().data + 1.0) / 2.0
+        input_part3 = (self.input_part3[0:num_img_cols].cpu().data + 1.0) / 2.0
+        image_gen   = (self.image_gen[0:num_img_cols].cpu().data + 1.0) / 2.0
+        gen_mask    = (self.gen_mask[0:num_img_cols].cpu().data)
+        gt_mask     = (self.gt_mask[0:num_img_cols].cpu().data)
+
+        input_image_pil = [transforms.ToPILImage()(input_image[i]) for i in range(input_image.shape[0])]
+        input_part1_pil = [transforms.ToPILImage()(input_part1[i]) for i in range(input_part1.shape[0])]
+        input_part2_pil = [transforms.ToPILImage()(input_part2[i]) for i in range(input_part2.shape[0])]
+        input_part3_pil = [transforms.ToPILImage()(input_part3[i]) for i in range(input_part3.shape[0])]
+        image_gen_pil   = [transforms.ToPILImage()(image_gen[i])   for i in range(image_gen.shape[0])]
+        gen_mask_pil    = [transforms.ToPILImage()(gen_mask[i])    for i in range(gen_mask.shape[0])]
+        gt_mask_pil     = [transforms.ToPILImage()(gt_mask[i])     for i in range(gt_mask.shape[0])]
+
+        im_w = input_image.shape[2]
+        im_h = input_image.shape[3]
+
+        image_save = Image.new('RGB', (num_img_cols*im_w, num_img_rows*im_h))
+
+        for i in range(num_img_cols):
+            image_save.paste(input_part1_pil[i],   (im_w*i, im_h*0))
+            image_save.paste(input_part2_pil[i],   (im_w*i, im_h*1))
+            image_save.paste(input_part3_pil[i],   (im_w*i, im_h*2))
+            image_save.paste(input_image_pil[i],   (im_w*i, im_h*3))
+            image_save.paste(image_gen_pil[i],     (im_w*i, im_h*4))
+            image_save.paste(gen_mask_pil[i],      (im_w*i, im_h*5))
+            image_save.paste(gt_mask_pil[i],       (im_w*i, im_h*6))
+
+        save_name = "epoch_%02d_iter_%04d.png" %(epoch, iter)
+        if is_test:
+            save_image_path = os.path.join(self.test_dir, save_name)
+        else:
+            save_image_path = os.path.join(self.sample_dir, save_name)
+
+        image_save.save(save_image_path)
 
 
     def set_inputs_for_test(self, input_image, input_part1, input_part2, input_part3, z):
 
         # stack tensors
         for i in range(len(input_image)):
-            self.input_image[i,:,:,:] = self.transform(input_image[i]).clone()
-            self.input_part1[i,:,:,:] = self.transform(input_part1[i]).clone()
-            self.input_part2[i,:,:,:] = self.transform(input_part2[i]).clone()
-            self.input_part3[i,:,:,:] = self.transform(input_part3[i]).clone()
+            self.input_image[i,:,:,:] = self.transform(input_image[i])
+            self.input_part1[i,:,:,:] = self.transform(input_part1[i])
+            self.input_part2[i,:,:,:] = self.transform(input_part2[i])
+            self.input_part3[i,:,:,:] = self.transform(input_part3[i])
 
-        self.z = Variable(z.clone())
+        self.z = Variable(z)
 
         if self.opts.use_gpu:
             self.input_image = self.input_image.cuda(device=self.opts.gpu_id)
@@ -207,14 +251,14 @@ class KeyPatchGanModel():
 
         # stack tensors
         for i in range(len(input_image)):
-            self.input_image[i,:,:,:] = self.transform(input_image[i]).clone()
-            self.shuff_image[i,:,:,:] = self.transform(shuff_image[i]).clone()
-            self.input_part1[i,:,:,:] = self.transform(input_part1[i]).clone()
-            self.input_part2[i,:,:,:] = self.transform(input_part2[i]).clone()
-            self.input_part3[i,:,:,:] = self.transform(input_part3[i]).clone()
-            self.gt_mask[i,0,:,:] = gt_mask[i].clone()
+            self.input_image[i,:,:,:] = self.transform(input_image[i])
+            self.shuff_image[i,:,:,:] = self.transform(shuff_image[i])
+            self.input_part1[i,:,:,:] = self.transform(input_part1[i])
+            self.input_part2[i,:,:,:] = self.transform(input_part2[i])
+            self.input_part3[i,:,:,:] = self.transform(input_part3[i])
+            self.gt_mask[i,0,:,:] = gt_mask[i]
 
-        self.z           = Variable(z.clone())
+        self.z           = Variable(z)
         self.weight_g_loss = Variable(self.Tensor([weight_g_loss]))
 
         if self.opts.use_gpu:
@@ -244,8 +288,8 @@ class KeyPatchGanModel():
         save_filename = 'epoch_%s_net_%s.pth' % (epoch, net_name)
         save_path = os.path.join(self.net_save_dir, save_filename)
         torch.save(network.cpu().state_dict(), save_path)
-        if torch.cuda.is_available():
-            network.cuda(device_id=self.opts['gpuid'])
+        if self.opts.use_gpu:
+            network.cuda(device=self.opts.gpu_id)
 
     def load_network(self, network, epoch, net_name):
         save_filename = 'epoch_%s_net_%s.pth' % (epoch, net_name)
