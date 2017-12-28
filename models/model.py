@@ -68,10 +68,11 @@ class KeyPatchGanModel():
 
 
         if self.opts.use_gpu:
-            self.net_discriminator.cuda(device=self.opts.gpu_id)
-            self.net_generator.cuda(device=self.opts.gpu_id)
-            self.net_part_encoder.cuda(device=self.opts.gpu_id)
-            self.net_mask_generator.cuda(device=self.opts.gpu_id)
+            torch.cuda.set_device(self.opts.gpu_id)
+            self.net_discriminator.cuda()
+            self.net_generator.cuda()
+            self.net_part_encoder.cuda()
+            self.net_mask_generator.cuda()
 
 
         # define optimizer
@@ -239,11 +240,11 @@ class KeyPatchGanModel():
         self.z = Variable(z)
 
         if self.opts.use_gpu:
-            self.input_image = self.input_image.cuda(device=self.opts.gpu_id)
-            self.input_part1 = self.input_part1.cuda(device=self.opts.gpu_id)
-            self.input_part2 = self.input_part2.cuda(device=self.opts.gpu_id)
-            self.input_part3 = self.input_part3.cuda(device=self.opts.gpu_id)
-            self.z           = self.z.cuda(device=self.opts.gpu_id)
+            self.input_image = self.input_image.cuda()
+            self.input_part1 = self.input_part1.cuda()
+            self.input_part2 = self.input_part2.cuda()
+            self.input_part3 = self.input_part3.cuda()
+            self.z           = self.z.cuda()
 
 
     def set_inputs_for_train(self, input_image, shuff_image, input_part1, input_part2, input_part3,
@@ -262,14 +263,14 @@ class KeyPatchGanModel():
         self.weight_g_loss = Variable(self.Tensor([weight_g_loss]))
 
         if self.opts.use_gpu:
-            self.input_image = self.input_image.cuda(device=self.opts.gpu_id)
-            self.shuff_image = self.shuff_image.cuda(device=self.opts.gpu_id)
-            self.input_part1 = self.input_part1.cuda(device=self.opts.gpu_id)
-            self.input_part2 = self.input_part2.cuda(device=self.opts.gpu_id)
-            self.input_part3 = self.input_part3.cuda(device=self.opts.gpu_id)
-            self.gt_mask    = self.gt_mask.cuda(device=self.opts.gpu_id)
-            self.z          = self.z.cuda(device=self.opts.gpu_id)
-            self.weight_g_loss = self.weight_g_loss.cuda(device=self.opts.gpu_id)
+            self.input_image = self.input_image.cuda()
+            self.shuff_image = self.shuff_image.cuda()
+            self.input_part1 = self.input_part1.cuda()
+            self.input_part2 = self.input_part2.cuda()
+            self.input_part3 = self.input_part3.cuda()
+            self.gt_mask    = self.gt_mask.cuda()
+            self.z          = self.z.cuda()
+            self.weight_g_loss = self.weight_g_loss.cuda()
 
     def save(self, epoch):
         self.save_network(self.net_discriminator, epoch, 'net_disc')
@@ -289,7 +290,7 @@ class KeyPatchGanModel():
         save_path = os.path.join(self.net_save_dir, save_filename)
         torch.save(network.cpu().state_dict(), save_path)
         if self.opts.use_gpu:
-            network.cuda(device=self.opts.gpu_id)
+            network.cuda()
 
     def load_network(self, network, epoch, net_name):
         save_filename = 'epoch_%s_net_%s.pth' % (epoch, net_name)
