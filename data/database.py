@@ -29,7 +29,7 @@ class Dataset():
 
             # Load part BBoxes
             bbs = scipy.io.loadmat("celebA_allbbs.mat")['allbbs']
-            changeRatio = self.output_size / self.edgeBoxResol
+            changeRatio = float(self.output_size) / float(self.edgeBoxResol)
             bbs = np.floor(bbs * changeRatio).astype(np.int)
 
             self.bbs = bbs
