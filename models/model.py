@@ -9,6 +9,7 @@ import itertools
 import visdom
 from PIL import Image
 import os
+import time
 
 class KeyPatchGanModel():
     def __init__(self):
@@ -95,9 +96,9 @@ class KeyPatchGanModel():
     def forward(self, is_train):
 
         ''' Encoding Key parts '''
-        _, self.part1_enc_out = self.net_part_encoder(self.input_part1)
-        _, self.part2_enc_out = self.net_part_encoder(self.input_part2)
-        _, self.part3_enc_out = self.net_part_encoder(self.input_part3)
+        _, self.part1_enc_out = self.net_part_encoder(self.input_part1.detach())
+        _, self.part2_enc_out = self.net_part_encoder(self.input_part2.detach())
+        _, self.part3_enc_out = self.net_part_encoder(self.input_part3.detach())
 
         self.parts_enc = {
             'embed': self.part1_enc_out['embed'] + self.part2_enc_out['embed'] + self.part3_enc_out['embed'],
@@ -117,38 +118,52 @@ class KeyPatchGanModel():
                                               gen_mask_output['m0'], gen_mask_output['m1'],
                                               gen_mask_output['m2'], gen_mask_output['m3'])
 
-        if is_train:
-            self.real_gtpart    = torch.mul(self.input_image, self.gt_mask) # realpart
-            self.real_gtother   = torch.mul(self.input_image, 1 - self.gt_mask) # realother
-            self.gen_genpart    = torch.mul(self.image_gen, self.gen_mask) # genpart
-            self.genpart_realbg = torch.mul(self.image_gen, self.gt_mask) + torch.mul(self.input_image, 1 - self.gt_mask)   # GR
-            self.realpart_genbg = torch.mul(self.image_gen, 1 - self.gt_mask) + torch.mul(self.input_image, self.gt_mask)   # RG
-            self.shfpart_realbg = torch.mul(self.shuff_image, self.gt_mask) + torch.mul(self.input_image, 1 - self.gt_mask) # SR
-            self.realpart_shfbg = torch.mul(self.input_image, self.gt_mask) + torch.mul(self.shuff_image, 1 - self.gt_mask) # RS
 
-            self.d_real, _           = self.net_discriminator(self.input_image)
-            self.d_gen, _            = self.net_discriminator(self.image_gen)
-            self.d_genpart_realbg, _ = self.net_discriminator(self.genpart_realbg)
-            self.d_realpart_genbg, _ = self.net_discriminator(self.realpart_genbg)
-            self.d_shfpart_realbg, _ = self.net_discriminator(self.shfpart_realbg)
-            self.d_realpart_shfbg, _ = self.net_discriminator(self.realpart_shfbg)
+        ### move this into backward_D and backward_G with ``detach()''
+        # if is_train:
+
 
 
     def backward_D(self):
+        # self.real_gtother = torch.mul(self.input_image, 1 - self.gt_mask)  # realother
+        self.genpart_realbg = torch.mul(self.image_gen, self.gt_mask) + \
+                              torch.mul(self.input_image, 1 - self.gt_mask)  # GR
+        self.realpart_genbg = torch.mul(self.image_gen, 1 - self.gt_mask) + \
+                              torch.mul(self.input_image, self.gt_mask)  # RG
+        self.shfpart_realbg = torch.mul(self.shuff_image, self.gt_mask) + \
+                              torch.mul(self.input_image, 1 - self.gt_mask)  # SR
+        self.realpart_shfbg = torch.mul(self.input_image, self.gt_mask) + \
+                              torch.mul(self.shuff_image, 1 - self.gt_mask)  # RS
+
+        self.d_real = self.net_discriminator(self.input_image.detach())
+        self.d_gen = self.net_discriminator(self.image_gen.detach())
+        self.d_genpart_realbg = self.net_discriminator(self.genpart_realbg.detach())
+        self.d_realpart_genbg = self.net_discriminator(self.realpart_genbg.detach())
+        self.d_shfpart_realbg = self.net_discriminator(self.shfpart_realbg.detach())
+        self.d_realpart_shfbg = self.net_discriminator(self.realpart_shfbg.detach())
+
         true_tensor = Variable(self.Tensor(self.d_real.data.size()).fill_(1.0))
         fake_tensor = Variable(self.Tensor(self.d_real.data.size()).fill_(0.0))
         self.d_loss = self.criterionGAN(self.d_real, true_tensor) + self.criterionGAN(self.d_gen, fake_tensor) + \
                       self.criterionGAN(self.d_genpart_realbg, fake_tensor) + self.criterionGAN(self.d_realpart_genbg, fake_tensor) + \
                       self.criterionGAN(self.d_shfpart_realbg, fake_tensor) + self.criterionGAN(self.d_realpart_shfbg, fake_tensor)
-        self.d_loss.backward(retain_graph=True)
+        self.d_loss.backward()
 
     def backward_G(self):
+        self.d_real = self.net_discriminator(self.input_image)
+        self.d_gen = self.net_discriminator(self.image_gen)
+        self.real_gtpart = torch.mul(self.input_image, self.gt_mask)  # realpart
+        self.gen_genpart = torch.mul(self.image_gen, self.gen_mask)  # genpart
+
         true_tensor = Variable(self.Tensor(self.d_real.size()).fill_(1.0))
         self.g_loss_l1_appr = self.weight_g_loss * self.criterionMask(self.gen_mask, self.gt_mask)
         self.g_loss_l1_mask = self.weight_g_loss * self.criterionAppr(self.gen_genpart, self.real_gtpart)
         self.g_loss_gan = self.criterionGAN(self.d_gen, true_tensor)
         self.g_loss = self.g_loss_l1_appr + self.g_loss_l1_mask + self.g_loss_gan
-        self.g_loss.backward(retain_graph=True)
+
+        # tt = time.time()
+        self.g_loss.backward()
+        # print ('%f' % (time.time()-tt))
 
     def optimize_parameters(self):
 
@@ -160,9 +175,7 @@ class KeyPatchGanModel():
         self.backward_G()
         self.optimizer_G.step()
 
-        # self.optimizer_G.zero_grad()
-        # self.backward_G()
-        # self.optimizer_G.step()
+
 
     def visualize(self, win_offset=0):
 
@@ -362,33 +375,52 @@ class MaskGenerator(nn.Module):
 
         self.opts = opts
 
+        df_dims_in = [opts.part_embed_dim,
+                      opts.df_dim * 8 * 2,
+                      opts.df_dim * 4 * 2,
+                      opts.df_dim * 2 * 2,
+                      opts.df_dim * 2]
+
+        # df_dims_in = [opts.part_embed_dim,
+        #               opts.df_dim * 8,
+        #               opts.df_dim * 4,
+        #               opts.df_dim * 2,
+        #               opts.df_dim]
+
+        df_dims_out = [opts.df_dim * 8,
+                       opts.df_dim * 4,
+                       opts.df_dim * 2,
+                       opts.df_dim,
+                       1]
+
+
         conv3_spatial_dim = np.int(self.opts.output_size / np.power(2, self.opts.num_conv_layers))
         self.convT0 = nn.Sequential(
-            nn.ConvTranspose2d(opts.part_embed_dim, opts.df_dim * 8,
+            nn.ConvTranspose2d(df_dims_in[0], df_dims_out[0],
                                kernel_size=conv3_spatial_dim, stride=1, padding=0),
             nn.BatchNorm2d(opts.df_dim * 8),
             nn.ReLU()
         )
         self.convT1 = nn.Sequential(
-            nn.ConvTranspose2d(opts.df_dim * 8 * 2, opts.df_dim * 4,
+            nn.ConvTranspose2d(df_dims_in[1], df_dims_out[1],
                                kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
             nn.BatchNorm2d(opts.df_dim * 4)
         )
         self.convT2 = nn.Sequential(
-            nn.ConvTranspose2d(opts.df_dim * 4 * 2, opts.df_dim * 2,
+            nn.ConvTranspose2d(df_dims_in[2], df_dims_out[2],
                                kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
             nn.BatchNorm2d(opts.df_dim * 2)
         )
         self.convT3 = nn.Sequential(
-            nn.ConvTranspose2d(opts.df_dim * 2 * 2, opts.df_dim,
+            nn.ConvTranspose2d(df_dims_in[3], df_dims_out[3],
                                kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
             nn.BatchNorm2d(opts.df_dim)
         )
         self.convT4 = nn.Sequential(
-            nn.ConvTranspose2d(opts.df_dim * 2, 1,
+            nn.ConvTranspose2d(df_dims_in[4], df_dims_out[4],
                                kernel_size=4, stride=2, padding=1),
             nn.Sigmoid()
         )
@@ -463,14 +495,7 @@ class Discriminator(nn.Module):
         self.d2 = self.conv2(self.d1)
         self.d3 = self.conv3(self.d2)
         self.disc = self.fc4(self.d3)
-        outputs = {
-            'd0': self.d0,
-            'd1': self.d1,
-            'd2': self.d2,
-            'd3': self.d3,
-            'disc': self.disc
-        }
-        return self.disc, outputs
+        return self.disc
 
 class ImageGenerator(nn.Module):
     def __init__(self, opts):
@@ -478,33 +503,52 @@ class ImageGenerator(nn.Module):
 
         self.opts = opts
 
+
+        df_dims_in = [opts.part_embed_dim + opts.z_dim,
+                      opts.df_dim * 8 * 3,
+                      opts.df_dim * 4 * 3,
+                      opts.df_dim * 2 * 3,
+                      opts.df_dim * 3]
+        # df_dims_in = [opts.part_embed_dim + opts.z_dim,
+        #               opts.df_dim * 8,
+        #               opts.df_dim * 4,
+        #               opts.df_dim * 2,
+        #               opts.df_dim]
+
+        df_dims_out = [opts.df_dim * 8,
+                       opts.df_dim * 4,
+                       opts.df_dim * 2,
+                       opts.df_dim,
+                       opts.c_dim]
+
+
         conv3_spatial_dim = np.int(self.opts.output_size / np.power(2, self.opts.num_conv_layers))
         self.convT0 = nn.Sequential(
-            nn.ConvTranspose2d(opts.part_embed_dim + opts.z_dim, opts.df_dim * 8,
+            nn.ConvTranspose2d(df_dims_in[0], df_dims_out[0],
                                kernel_size=conv3_spatial_dim, stride=1, padding=0),
             nn.BatchNorm2d(opts.df_dim * 8),
             nn.ReLU()
         )
         self.convT1 = nn.Sequential(
-            nn.ConvTranspose2d(opts.df_dim * 8 * 3, opts.df_dim * 4,
+            nn.ConvTranspose2d(df_dims_in[1], df_dims_out[1],
                                kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
             nn.BatchNorm2d(opts.df_dim * 4)
         )
         self.convT2 = nn.Sequential(
-            nn.ConvTranspose2d(opts.df_dim * 4 * 3, opts.df_dim * 2,
+            nn.ConvTranspose2d(df_dims_in[2], df_dims_out[2],
                                kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
             nn.BatchNorm2d(opts.df_dim * 2)
         )
         self.convT3 = nn.Sequential(
-            nn.ConvTranspose2d(opts.df_dim * 2 * 3, opts.df_dim,
+            nn.ConvTranspose2d(df_dims_in[3], df_dims_out[3],
                                kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
             nn.BatchNorm2d(opts.df_dim)
         )
         self.convT4 = nn.Sequential(
-            nn.ConvTranspose2d(opts.df_dim * 3, opts.c_dim,
+            nn.ConvTranspose2d(df_dims_in[4], df_dims_out[4],
                                kernel_size=4, stride=2, padding=1),
             nn.Tanh()
         )

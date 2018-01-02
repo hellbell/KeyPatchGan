@@ -35,7 +35,7 @@ dataset.initialize(opts)
 
 # Split train/test data
 np.random.seed(opts.random_seed)
-all_idx = np.random.randint(0, len(dataset), len(dataset))
+all_idx = np.random.permutation(len(dataset))
 test_idx = all_idx[-opts.num_tests:]
 sample_idx = all_idx[:opts.num_samples]
 train_idx = all_idx[:-opts.num_tests]
@@ -77,7 +77,7 @@ start_time = time.time()
 for epoch in range(opts.epoch):
 
     # shuffle data
-    curr_epoch_idx = np.random.randint(0, num_train_imgs, num_train_imgs)
+    curr_epoch_idx = np.random.permutation(num_train_imgs)
     curr_train_idx = train_idx[curr_epoch_idx]
     num_batches = num_train_imgs // opts.batch_size
 
