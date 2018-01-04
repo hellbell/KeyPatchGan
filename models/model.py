@@ -114,7 +114,7 @@ class KeyPatchGanModel():
                                                 self.parts_enc['e2'], self.parts_enc['e3'])
 
         ''' Generating Full image'''
-        self.image_gen, _ = self.net_generator(self.parts_enc['embed'], self.z,
+        self.image_gen, _ = self.net_generator(self.parts_enc['embed'], self.z.detach(),
                                               gen_mask_output['m0'], gen_mask_output['m1'],
                                               gen_mask_output['m2'], gen_mask_output['m3'])
 
@@ -150,9 +150,9 @@ class KeyPatchGanModel():
         self.d_loss.backward()
 
     def backward_G(self):
-        self.d_real = self.net_discriminator(self.input_image)
+        self.d_real = self.net_discriminator(self.input_image.detach())
         self.d_gen = self.net_discriminator(self.image_gen)
-        self.real_gtpart = torch.mul(self.input_image, self.gt_mask)  # realpart
+        self.real_gtpart = torch.mul(self.input_image.detach(), self.gt_mask)  # realpart
         self.gen_genpart = torch.mul(self.image_gen, self.gen_mask)  # genpart
 
         true_tensor = Variable(self.Tensor(self.d_real.size()).fill_(1.0))
@@ -243,6 +243,17 @@ class KeyPatchGanModel():
 
     def set_inputs_for_test(self, input_image, input_part1, input_part2, input_part3, z):
 
+
+        self.input_image = Variable(self.Tensor(self.batch_size, self.c_dim, self.output_size, self.output_size))
+        self.shuff_image = Variable(self.Tensor(self.batch_size, self.c_dim, self.output_size, self.output_size))
+        self.input_part1  = Variable(self.Tensor(self.batch_size, self.c_dim, self.output_size, self.output_size))
+        self.input_part2  = Variable(self.Tensor(self.batch_size, self.c_dim, self.output_size, self.output_size))
+        self.input_part3  = Variable(self.Tensor(self.batch_size, self.c_dim, self.output_size, self.output_size))
+        self.input_z      = Variable(self.Tensor(self.batch_size, self.z_dim, 1, 1))
+        self.gt_mask      = Variable(self.Tensor(self.batch_size, 1, self.output_size, self.output_size))
+        self.weight_g_loss = Variable(self.Tensor(1))
+
+
         # stack tensors
         for i in range(len(input_image)):
             self.input_image[i,:,:,:] = self.transform(input_image[i])
@@ -262,6 +273,15 @@ class KeyPatchGanModel():
 
     def set_inputs_for_train(self, input_image, shuff_image, input_part1, input_part2, input_part3,
                    z, gt_mask, weight_g_loss):
+
+        self.input_image = Variable(self.Tensor(self.batch_size, self.c_dim, self.output_size, self.output_size))
+        self.shuff_image = Variable(self.Tensor(self.batch_size, self.c_dim, self.output_size, self.output_size))
+        self.input_part1  = Variable(self.Tensor(self.batch_size, self.c_dim, self.output_size, self.output_size))
+        self.input_part2  = Variable(self.Tensor(self.batch_size, self.c_dim, self.output_size, self.output_size))
+        self.input_part3  = Variable(self.Tensor(self.batch_size, self.c_dim, self.output_size, self.output_size))
+        self.input_z      = Variable(self.Tensor(self.batch_size, self.z_dim, 1, 1))
+        self.gt_mask      = Variable(self.Tensor(self.batch_size, 1, self.output_size, self.output_size))
+        self.weight_g_loss = Variable(self.Tensor(1))
 
         # stack tensors
         for i in range(len(input_image)):

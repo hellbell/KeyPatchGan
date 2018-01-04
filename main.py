@@ -119,6 +119,7 @@ for epoch in range(opts.epoch):
                      model.g_loss_l1_appr.cpu().data.numpy(), model.g_loss_l1_mask.cpu().data.numpy(),
                      time.time()-start_time))
 
+
             model.set_inputs_for_train(sample_images, sample_images,
                                        sample_part1_images, sample_part2_images, sample_part3_images,
                                        sample_z, sample_gt_masks, m_weight[epoch])
@@ -129,6 +130,9 @@ for epoch in range(opts.epoch):
                                        test_z, test_gt_masks, m_weight[epoch])
             model.forward(is_train=False)
             model.visualize(win_offset=100)
+
+            start_time = time.time()
+
         if (i % 200 == 1):
             model.set_inputs_for_train(sample_images, sample_images,
                                        sample_part1_images, sample_part2_images, sample_part3_images,
