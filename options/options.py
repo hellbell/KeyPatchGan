@@ -9,7 +9,7 @@ class Options():
         self.parser.add_argument('--epoch',         type=int, default=25)
         self.parser.add_argument('--learning_rate', type=float, default=0.0002)
         self.parser.add_argument('--beta1',         type=float, default=0.5)
-        self.parser.add_argument('--batch_size',    type=int, default=128)
+        self.parser.add_argument('--batch_size',    type=int, default=64)
         self.parser.add_argument('--image_size',    type=int, default=108)
         self.parser.add_argument('--output_size',   type=int, default=64)
         self.parser.add_argument('--c_dim',         type=int, default=3)

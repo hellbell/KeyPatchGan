@@ -96,9 +96,9 @@ class KeyPatchGanModel():
     def forward(self, is_train):
 
         ''' Encoding Key parts '''
-        _, self.part1_enc_out = self.net_part_encoder(self.input_part1.detach())
-        _, self.part2_enc_out = self.net_part_encoder(self.input_part2.detach())
-        _, self.part3_enc_out = self.net_part_encoder(self.input_part3.detach())
+        _, self.part1_enc_out = self.net_part_encoder(self.input_part1)
+        _, self.part2_enc_out = self.net_part_encoder(self.input_part2)
+        _, self.part3_enc_out = self.net_part_encoder(self.input_part3)
 
         self.parts_enc = {
             'embed': self.part1_enc_out['embed'] + self.part2_enc_out['embed'] + self.part3_enc_out['embed'],
@@ -114,13 +114,9 @@ class KeyPatchGanModel():
                                                 self.parts_enc['e2'], self.parts_enc['e3'])
 
         ''' Generating Full image'''
-        self.image_gen, _ = self.net_generator(self.parts_enc['embed'], self.z.detach(),
+        self.image_gen, _ = self.net_generator(self.parts_enc['embed'], self.input_z,
                                               gen_mask_output['m0'], gen_mask_output['m1'],
                                               gen_mask_output['m2'], gen_mask_output['m3'])
-
-
-        ### move this into backward_D and backward_G with ``detach()''
-        # if is_train:
 
 
 
@@ -150,16 +146,16 @@ class KeyPatchGanModel():
         self.d_loss.backward()
 
     def backward_G(self):
-        self.d_real = self.net_discriminator(self.input_image.detach())
+        self.d_real = self.net_discriminator(self.input_image)
         self.d_gen = self.net_discriminator(self.image_gen)
-        self.real_gtpart = torch.mul(self.input_image.detach(), self.gt_mask)  # realpart
+        self.real_gtpart = torch.mul(self.input_image, self.gt_mask)  # realpart
         self.gen_genpart = torch.mul(self.image_gen, self.gen_mask)  # genpart
 
         true_tensor = Variable(self.Tensor(self.d_real.size()).fill_(1.0))
-        self.g_loss_l1_appr = self.weight_g_loss * self.criterionMask(self.gen_mask, self.gt_mask)
-        self.g_loss_l1_mask = self.weight_g_loss * self.criterionAppr(self.gen_genpart, self.real_gtpart)
+        self.g_loss_l1_appr = self.criterionMask(self.gen_mask, self.gt_mask)
+        self.g_loss_l1_mask = self.criterionAppr(self.gen_genpart, self.real_gtpart)
         self.g_loss_gan = self.criterionGAN(self.d_gen, true_tensor)
-        self.g_loss = self.g_loss_l1_appr + self.g_loss_l1_mask + self.g_loss_gan
+        self.g_loss = 3 * self.weight_g_loss * self.g_loss_l1_appr + self.weight_g_loss * self.g_loss_l1_mask + self.g_loss_gan
 
         # tt = time.time()
         self.g_loss.backward()
@@ -193,12 +189,6 @@ class KeyPatchGanModel():
         self.vis.images(gt_mask,     win=win_offset+3, opts=dict(title='gt masks'))
 
     def save_images(self, epoch, iter, is_test=False):
-        # ups = nn.Upsample(scale_factor=2, mode='nearest')
-        # input_image = (ups(self.input_image)[0:16].cpu().data + 1.0) / 2.0
-        # image_gen   = (ups(self.image_gen)[0:16].cpu().data + 1.0) / 2.0
-        # gen_mask    = (ups(self.gen_mask)[0:16].cpu().data)
-        # gt_mask     = (ups(self.gt_mask)[0:16].cpu().data)
-
         num_img_rows = 7
         num_img_cols = 16
 
@@ -245,14 +235,10 @@ class KeyPatchGanModel():
 
 
         self.input_image = Variable(self.Tensor(self.batch_size, self.c_dim, self.output_size, self.output_size))
-        self.shuff_image = Variable(self.Tensor(self.batch_size, self.c_dim, self.output_size, self.output_size))
         self.input_part1  = Variable(self.Tensor(self.batch_size, self.c_dim, self.output_size, self.output_size))
         self.input_part2  = Variable(self.Tensor(self.batch_size, self.c_dim, self.output_size, self.output_size))
         self.input_part3  = Variable(self.Tensor(self.batch_size, self.c_dim, self.output_size, self.output_size))
-        self.input_z      = Variable(self.Tensor(self.batch_size, self.z_dim, 1, 1))
-        self.gt_mask      = Variable(self.Tensor(self.batch_size, 1, self.output_size, self.output_size))
-        self.weight_g_loss = Variable(self.Tensor(1))
-
+        self.input_z = Variable(z)
 
         # stack tensors
         for i in range(len(input_image)):
@@ -261,27 +247,27 @@ class KeyPatchGanModel():
             self.input_part2[i,:,:,:] = self.transform(input_part2[i])
             self.input_part3[i,:,:,:] = self.transform(input_part3[i])
 
-        self.z = Variable(z)
+
 
         if self.opts.use_gpu:
             self.input_image = self.input_image.cuda()
             self.input_part1 = self.input_part1.cuda()
             self.input_part2 = self.input_part2.cuda()
             self.input_part3 = self.input_part3.cuda()
-            self.z           = self.z.cuda()
+            self.input_z     = self.input_z.cuda()
 
 
     def set_inputs_for_train(self, input_image, shuff_image, input_part1, input_part2, input_part3,
                    z, gt_mask, weight_g_loss):
 
-        self.input_image = Variable(self.Tensor(self.batch_size, self.c_dim, self.output_size, self.output_size))
-        self.shuff_image = Variable(self.Tensor(self.batch_size, self.c_dim, self.output_size, self.output_size))
-        self.input_part1  = Variable(self.Tensor(self.batch_size, self.c_dim, self.output_size, self.output_size))
-        self.input_part2  = Variable(self.Tensor(self.batch_size, self.c_dim, self.output_size, self.output_size))
-        self.input_part3  = Variable(self.Tensor(self.batch_size, self.c_dim, self.output_size, self.output_size))
-        self.input_z      = Variable(self.Tensor(self.batch_size, self.z_dim, 1, 1))
-        self.gt_mask      = Variable(self.Tensor(self.batch_size, 1, self.output_size, self.output_size))
-        self.weight_g_loss = Variable(self.Tensor(1))
+        self.input_image   = Variable(self.Tensor(self.batch_size, self.c_dim, self.output_size, self.output_size))
+        self.shuff_image   = Variable(self.Tensor(self.batch_size, self.c_dim, self.output_size, self.output_size))
+        self.input_part1   = Variable(self.Tensor(self.batch_size, self.c_dim, self.output_size, self.output_size))
+        self.input_part2   = Variable(self.Tensor(self.batch_size, self.c_dim, self.output_size, self.output_size))
+        self.input_part3   = Variable(self.Tensor(self.batch_size, self.c_dim, self.output_size, self.output_size))
+        self.gt_mask       = Variable(self.Tensor(self.batch_size, 1, self.output_size, self.output_size))
+        self.input_z       = Variable(z)
+        self.weight_g_loss = Variable(self.Tensor([weight_g_loss]))
 
         # stack tensors
         for i in range(len(input_image)):
@@ -292,9 +278,6 @@ class KeyPatchGanModel():
             self.input_part3[i,:,:,:] = self.transform(input_part3[i])
             self.gt_mask[i,0,:,:] = gt_mask[i]
 
-        self.z           = Variable(z)
-        self.weight_g_loss = Variable(self.Tensor([weight_g_loss]))
-
         if self.opts.use_gpu:
             self.input_image = self.input_image.cuda()
             self.shuff_image = self.shuff_image.cuda()
@@ -302,7 +285,7 @@ class KeyPatchGanModel():
             self.input_part2 = self.input_part2.cuda()
             self.input_part3 = self.input_part3.cuda()
             self.gt_mask    = self.gt_mask.cuda()
-            self.z          = self.z.cuda()
+            self.input_z    = self.input_z.cuda()
             self.weight_g_loss = self.weight_g_loss.cuda()
 
     def save(self, epoch):
@@ -401,11 +384,6 @@ class MaskGenerator(nn.Module):
                       opts.df_dim * 2 * 2,
                       opts.df_dim * 2]
 
-        # df_dims_in = [opts.part_embed_dim,
-        #               opts.df_dim * 8,
-        #               opts.df_dim * 4,
-        #               opts.df_dim * 2,
-        #               opts.df_dim]
 
         df_dims_out = [opts.df_dim * 8,
                        opts.df_dim * 4,
@@ -529,11 +507,6 @@ class ImageGenerator(nn.Module):
                       opts.df_dim * 4 * 3,
                       opts.df_dim * 2 * 3,
                       opts.df_dim * 3]
-        # df_dims_in = [opts.part_embed_dim + opts.z_dim,
-        #               opts.df_dim * 8,
-        #               opts.df_dim * 4,
-        #               opts.df_dim * 2,
-        #               opts.df_dim]
 
         df_dims_out = [opts.df_dim * 8,
                        opts.df_dim * 4,

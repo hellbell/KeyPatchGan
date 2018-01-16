@@ -72,7 +72,7 @@ sample_images, sample_part1_images, sample_part2_images, sample_part3_images, sa
 
 
 ''' Main Training Loop Here '''
-m_weight = np.logspace(-2, -4, num=opts.epoch) * 64*64
+m_weight = np.logspace(-2, -4, num=opts.epoch) * 64 * 64 * 64
 start_time = time.time()
 for epoch in range(opts.epoch):
 
@@ -114,9 +114,11 @@ for epoch in range(opts.epoch):
         model.optimize_parameters()
 
         if (i % 100 == 1):
-            print('epoch: %02d/%02d, iter: %04d/%04d, d_loss: %f. g_loss_appr: %f, g_loss_mask: %f, %f sec'
+            print('epoch: %02d/%02d, iter: %04d/%04d, d_loss: %f. g_loss_gan: %f, g_loss_appr: %f, g_loss_mask: %f, %f sec'
                   % (epoch+1, opts.epoch, i, num_batches, model.d_loss.cpu().data.numpy(),
-                     model.g_loss_l1_appr.cpu().data.numpy(), model.g_loss_l1_mask.cpu().data.numpy(),
+                     model.g_loss_gan.cpu().data.numpy(),
+                     model.g_loss_l1_appr.cpu().data.numpy(),
+                     model.g_loss_l1_mask.cpu().data.numpy(),
                      time.time()-start_time))
 
 
@@ -131,7 +133,6 @@ for epoch in range(opts.epoch):
             model.forward(is_train=False)
             model.visualize(win_offset=100)
 
-            start_time = time.time()
 
         if (i % 200 == 1):
             model.set_inputs_for_train(sample_images, sample_images,
