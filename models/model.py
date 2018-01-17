@@ -155,7 +155,7 @@ class KeyPatchGanModel():
         self.g_loss_l1_appr = self.criterionMask(self.gen_mask, self.gt_mask)
         self.g_loss_l1_mask = self.criterionAppr(self.gen_genpart, self.real_gtpart)
         self.g_loss_gan = self.criterionGAN(self.d_gen, true_tensor)
-        self.g_loss = 3 * self.weight_g_loss * self.g_loss_l1_appr + self.weight_g_loss * self.g_loss_l1_mask + self.g_loss_gan
+        self.g_loss = 3.0 * self.weight_g_loss * self.g_loss_l1_appr + self.weight_g_loss * self.g_loss_l1_mask + 2.0 * self.g_loss_gan
 
         # tt = time.time()
         self.g_loss.backward()
@@ -171,7 +171,9 @@ class KeyPatchGanModel():
         self.backward_G()
         self.optimizer_G.step()
 
-
+        # self.optimizer_G.zero_grad()
+        # self.backward_G()
+        # self.optimizer_G.step()
 
     def visualize(self, win_offset=0):
 
