@@ -50,7 +50,6 @@ class Options():
     def parse(self):
         self.opt = self.parser.parse_args()
         args = vars(self.opt)
-	self.opt.gpu_id = np.int(self.opt.gpu_id)
         for k,v in sorted(args.items()):
             print('%s: %s' %(str(k), str(v)))
         return self.opt

@@ -20,35 +20,22 @@ class Dataset():
         self.output_size = opts.output_size
 
         if self.db_name == 'celebA':
+
             # Load image list
-            img_path = os.path.join(opts.dataset_root, opts.db_name, "*.jpg")
+            img_path = os.path.join(opts.dataset_root, 'celebA', "*.jpg")
             img_list = glob(img_path)
             self.img_list = np.array(sorted(img_list))
             self.num_imgs = len(self.img_list)
 
             # Load part BBoxes
             bbs = scipy.io.loadmat("celebA_allbbs.mat")['allbbs']
-            changeRatio = float(self.output_size) / 128.0
+            changeRatio = float(self.output_size) / float(self.edgeBoxResol)
             bbs = np.floor(bbs * changeRatio).astype(np.int)
 
             self.bbs = bbs
 
-        elif self.db_name == 'compcar_128' or self.db_name == 'compcar_256' or self.db_name == 'compcar_256_bilinear':
-
-            img_path = os.path.join(opts.dataset_root, opts.db_name, "*.jpg")
-            img_list = glob(img_path)
-            self.img_list = np.array(sorted(img_list))
-            self.num_imgs = len(self.img_list)
-
-            # Load part BBoxes
-            bbs = scipy.io.loadmat("compcar_allbbs.mat")['allbbs']
-            changeRatio = opts.output_size
-            bbs = np.floor(bbs * changeRatio).astype(np.int)
-
-            self.bbs = bbs
-
-        else:
-            print ('Not ready for this dataset ...')
+        elif self.db_name == 'compCar':
+            print ('Not ready for compcar dataset ...')
 
     def __getitem__(self, index):
         img_path = self.img_list[index]
@@ -61,8 +48,5 @@ class Dataset():
 
     def name(self):
         return 'Dataset'
-
-
-
 
 
