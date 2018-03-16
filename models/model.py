@@ -6,14 +6,12 @@ import torchvision.transforms as transforms
 from collections import OrderedDict
 import numpy as np
 import itertools
-import visdom
 from PIL import Image
 import os
 import time
-from networks import PartEncoderR, DiscriminatorR, MaskGeneratorR, ImageGeneratorR
-from networks import PartEncoderU, DiscriminatorU, MaskGeneratorU, ImageGeneratorU
+from .networks import PartEncoderR, DiscriminatorR, MaskGeneratorR, ImageGeneratorR
+from .networks import PartEncoderU, DiscriminatorU, MaskGeneratorU, ImageGeneratorU
 from utils.my_utils import weights_init
-
 
 
 
@@ -40,10 +38,6 @@ class KeyPatchGanModel():
         if not os.path.exists(self.net_save_dir):
             os.makedirs(self.net_save_dir)
 
-
-        # if self.opts.use_gpu:
-        #     self.Tensor = torch.cuda.FloatTensor
-        # else:
         self.Tensor = torch.Tensor
 
         transform_list = [transforms.ToTensor(),
@@ -64,12 +58,16 @@ class KeyPatchGanModel():
 
         # define networks
         if self.opts.model_structure == 'resblock':
-            self.net_discriminator  = DiscriminatorR(self.opts)
-            self.net_generator      = ImageGeneratorR(self.opts)
-            self.net_part_encoder   = PartEncoderR(self.opts)
-            self.net_mask_generator = MaskGeneratorR(self.opts)
+            self.net_part_encoder   = PartEncoderR(self.opts,
+                                                   repeat_num=self.opts.res_n_repeat,
+                                                   num_downsample=self.opts.res_n_downsample)
+            self.net_mask_generator = MaskGeneratorR(self.opts,
+                                                     num_upsample=self.opts.res_n_upsample)
+            self.net_generator      = ImageGeneratorR(self.opts,
+                                                      num_upsample=self.opts.res_n_upsample)
+            self.net_discriminator  = DiscriminatorR(self.opts,
+                                                     repeat_num=self.opts.res_n_repeat)
         else:
-
             # find depth of network
             num_conv_layers = 0
             osize = self.opts.output_size / 4
@@ -92,18 +90,13 @@ class KeyPatchGanModel():
             self.load(self.opts.start_epoch)
 
         if self.opts.use_gpu:
-            torch.cuda.set_device(self.opts.gpu_id)
-            # self.net_discriminator.cuda()
-            # self.net_generator.cuda()
-            # self.net_part_encoder.cuda()
-            # self.net_mask_generator.cuda()
-            self.net_discriminator = nn.DataParallel(self.net_discriminator.cuda())
-            self.net_generator = nn.DataParallel(self.net_generator.cuda())
-            self.net_part_encoder = nn.DataParallel(self.net_part_encoder.cuda())
-            self.net_mask_generator = nn.DataParallel(self.net_mask_generator.cuda())
-
-        # torch.cuda.set_device(0)
-
+            if self.opts.use_multigpu:
+                self.net_discriminator = nn.DataParallel(self.net_discriminator).cuda()
+                self.net_generator = nn.DataParallel(self.net_generator).cuda()
+                self.net_part_encoder = nn.DataParallel(self.net_part_encoder).cuda()
+                self.net_mask_generator = nn.DataParallel(self.net_mask_generator).cuda()
+            else:
+                torch.cuda.set_device(self.opts.gpu_id)
 
         # define optimizer
         self.criterionMask = torch.nn.L1Loss()
@@ -119,7 +112,18 @@ class KeyPatchGanModel():
                                             lr=self.opts.learning_rate,
                                             betas=(self.opts.beta1, 0.999))
 
-        self.vis = visdom.Visdom(port=self.opts.visdom_port)
+        if self.opts.use_tensorboard:
+            from utils.logger import Logger
+            self.logger = Logger(self.opts.tb_log_path)
+
+        if self.opts.use_visdom:
+            import visdom
+            self.vis = visdom.Visdom(port=self.opts.visdom_port)
+
+
+
+
+
 
     def forward(self):
 
@@ -175,11 +179,22 @@ class KeyPatchGanModel():
         true_tensor = true_tensor.cuda()
         fake_tensor = Variable(self.Tensor(self.d_real.data.size()).fill_(0.0))
         fake_tensor = fake_tensor.cuda()
-        self.d_loss = self.criterionGAN(self.d_real, true_tensor) + \
-                      self.criterionGAN(self.d_gen, fake_tensor) + \
-                      self.criterionGAN(self.d_shfpart_realbg, fake_tensor) + \
-                      self.criterionGAN(self.d_realpart_shfbg, fake_tensor)
+
+        d_loss_real = self.criterionGAN(self.d_real, true_tensor)
+        d_loss_fake = self.criterionGAN(self.d_gen, fake_tensor)
+        d_loss_shfpart_realbg = self.criterionGAN(self.d_shfpart_realbg, fake_tensor)
+        d_loss_realpart_shfbg = self.criterionGAN(self.d_realpart_shfbg, fake_tensor)
+
+        self.d_loss = d_loss_real + d_loss_fake + \
+                      d_loss_shfpart_realbg + d_loss_realpart_shfbg
         self.d_loss.backward()
+
+        self.loss['D/loss_all'] = self.d_loss.data[0]
+        self.loss['D/loss_real'] = d_loss_real.data[0]
+        self.loss['D/loss_fake'] = d_loss_fake.data[0]
+        self.loss['D/loss_shfpart_realbg'] = d_loss_shfpart_realbg.data[0]
+        self.loss['D/loss_realpart_shfbg'] = d_loss_realpart_shfbg.data[0]
+
 
     def backward_G(self):
         self.d_real = self.net_discriminator(self.input_image)
@@ -190,16 +205,20 @@ class KeyPatchGanModel():
         true_tensor = Variable(self.Tensor(self.d_real.size()).fill_(1.0))
         true_tensor = true_tensor.cuda()
 
-        self.g_loss_l1_mask = self.criterionMask(self.gen_mask, self.gt_mask)
-        self.g_loss_l1_appr = self.criterionAppr(self.gen_genpart, self.real_gtpart)
+        self.g_loss_l1_mask = self.criterionMask(self.gen_mask, self.gt_mask) * self.weight_mask_loss
+        self.g_loss_l1_appr = self.criterionAppr(self.gen_genpart, self.real_gtpart) * self.weight_appr_loss
         self.g_loss_gan = self.criterionGAN(self.d_gen, true_tensor)
-        self.g_loss = self.weight_mask_loss * self.g_loss_l1_mask + \
-                      self.weight_appr_loss * self.g_loss_l1_appr + \
-                      1.0 * self.g_loss_gan
-
-        # tt = time.time()
+        self.g_loss = self.g_loss_l1_mask + self.g_loss_l1_appr + self.g_loss_gan
         self.g_loss.backward()
-        # print ('%f' % (time.time()-tt))
+
+        self.loss['G/loss_all'] = self.g_loss.data[0]
+        self.loss['G/loss_fake'] = self.g_loss_gan.data[0]
+        self.loss['G/loss_mask'] = self.g_loss_l1_mask.data[0]
+        self.loss['G/loss_appr'] = self.g_loss_l1_appr.data[0]
+
+
+
+
 
     def optimize_parameters_D(self):
         self.optimizer_D.zero_grad()

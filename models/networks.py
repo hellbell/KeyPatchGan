@@ -52,13 +52,13 @@ class PartEncoderR(nn.Module):
 
 
 class MaskGeneratorR(nn.Module):
-    def __init__(self, opts, num_updample=2):
+    def __init__(self, opts, num_upsample=2):
         super(MaskGeneratorR, self).__init__()
 
         layers = []
-        curr_dim = opts.conv_dim * np.power(2,num_updample)
+        curr_dim = opts.conv_dim * np.power(2,num_upsample)
         # Up-Sampling
-        for i in range(num_updample):
+        for i in range(num_upsample):
             layers.append(nn.ConvTranspose2d(curr_dim, curr_dim // 2, kernel_size=4, stride=2, padding=1, bias=False))
             layers.append(nn.InstanceNorm2d(curr_dim // 2, affine=True))
             layers.append(nn.ReLU(inplace=True))
@@ -74,13 +74,13 @@ class MaskGeneratorR(nn.Module):
 
 
 class ImageGeneratorR(nn.Module):
-    def __init__(self, opts, num_updample=2):
+    def __init__(self, opts, num_upsample=2):
         super(ImageGeneratorR, self).__init__()
 
         layers = []
-        curr_dim = opts.conv_dim * np.power(2, num_updample)
+        curr_dim = opts.conv_dim * np.power(2, num_upsample)
         # Up-Sampling
-        for i in range(num_updample):
+        for i in range(num_upsample):
             layers.append(nn.ConvTranspose2d(curr_dim, curr_dim // 2, kernel_size=4, stride=2, padding=1, bias=False))
             layers.append(nn.InstanceNorm2d(curr_dim // 2, affine=True))
             layers.append(nn.ReLU(inplace=True))

@@ -368,7 +368,7 @@ class PartEncoder(nn.Module):
 
             if i == 0 or i == self.opts.num_conv_layers:
                 self.actv.append(nn.LeakyReLU(0.2))
-            else:^
+            else:
                 self.actv.append(nn.Sequential(nn.BatchNorm2d(conv_dims_out[i]),nn.LeakyReLU(0.2)))
 
             self.conv.append(nn.Conv2d(conv_dims_in[i], conv_dims_out[i],

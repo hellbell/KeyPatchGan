@@ -62,8 +62,8 @@ sample_images, sample_part1_images, sample_part2_images, sample_part3_images, sa
 # compcar (4, 2) try !
 # m_weight1 = np.logspace(-1.5, -3.5, num=opts.epoch)
 # m_weight2 = np.logspace(-2, -4, num=opts.epoch)
-m_weight_mask = np.logspace(1, 1, num=opts.epoch)
-m_weight_appr = np.logspace(1, 1, num=opts.epoch) * 10
+m_weight_mask = np.logspace(2, 2, num=opts.epoch)
+m_weight_appr = np.logspace(2, 2, num=opts.epoch)
 
 
 start_time = time.time()
@@ -100,25 +100,32 @@ for epoch in range(opts.epoch):
                                    train_part1_images, train_part2_images, train_part3_images,
                                    train_z, train_gt_masks, m_weight_mask[epoch],m_weight_appr[epoch])
 
+
+        model.loss = {}
+
         # Train D
         model.forward()
         model.optimize_parameters_D()
 
         # Train G
-        if (i + 1) % 2 == 0:
+        if i % 2 == 1:
             model.forward()
             model.optimize_parameters_G()
 
-
-        if (i % 100 == 1):
+        if (i % 10 == 1):
             print('epoch: %02d/%02d, iter: %04d/%04d, d_loss: %f. g_loss_gan: %f, g_loss_appr: %f, g_loss_mask: %f, %f sec'
                   % (epoch+1, opts.epoch, i, num_batches, model.d_loss.cpu().data.numpy(),
                      model.g_loss_gan.cpu().data.numpy(),
                      model.g_loss_l1_appr.cpu().data.numpy(),
                      model.g_loss_l1_mask.cpu().data.numpy(),
                      time.time()-start_time))
+            if opts.use_tensorboard:
+                for tag, value in model.loss.items():
+                    model.logger.scalar_summary(tag, value, epoch * num_batches + i)
 
-            if opts.visualize:
+
+        if (i % 200 == 1):
+            if opts.use_visdom:
                 model.set_inputs_for_train(sample_images, sample_images,
                                            sample_part1_images, sample_part2_images, sample_part3_images,
                                            sample_z, sample_gt_masks, m_weight_mask[epoch],m_weight_appr[epoch])
@@ -130,8 +137,6 @@ for epoch in range(opts.epoch):
                 model.forward()
                 model.visualize(win_offset=100)
 
-
-        if (i % 200 == 1):
             model.set_inputs_for_train(sample_images, sample_images,
                                        sample_part1_images, sample_part2_images, sample_part3_images,
                                        sample_z, sample_gt_masks, m_weight_mask[epoch],m_weight_appr[epoch])

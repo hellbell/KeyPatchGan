@@ -1,6 +1,7 @@
 *.pyc
 *.py~
 */__pycache__
+logs/
 nets/
 results/
 .idea/
