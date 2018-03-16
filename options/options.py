@@ -11,14 +11,14 @@ class Options():
         # For compcar (256), is_crop=False, edge_box_resol=256
 
         ### OPTIONS ###
-        self.parser.add_argument('--epoch',         type=int, default=50)
+        self.parser.add_argument('--epoch',         type=int, default=25)
         self.parser.add_argument('--learning_rate', type=float, default=0.0002)
         self.parser.add_argument('--beta1',         type=float, default=0.5)
-        self.parser.add_argument('--batch_size',    type=int, default=32)
+        self.parser.add_argument('--batch_size',    type=int, default=64)
         self.parser.add_argument('--image_size',    type=int, default=108)
         self.parser.add_argument('--output_size',   type=int, default=64)
         self.parser.add_argument('--c_dim',         type=int, default=3)
-        self.parser.add_argument('--df_dim',        type=int, default=128)
+        self.parser.add_argument('--conv_dim',        type=int, default=64)
         self.parser.add_argument('--z_dim',         type=int, default=128)
         self.parser.add_argument('--part_embed_dim', type=int, default=128)
         self.parser.add_argument('--edge_box_resol', type=int, default=128)
@@ -33,6 +33,9 @@ class Options():
         self.parser.add_argument('--net_dir',      default='nets')
         self.parser.add_argument('--num_tests',     type=int, default=128)
         self.parser.add_argument('--num_samples',   type=int, default=128)
+        # self.parser.add_argument('--model_structure', default='resblock')
+        self.parser.add_argument('--model_structure', default='unet')
+
 
         ### OPTIONS ###
         self.parser.add_argument('--use_gpu', default=True)

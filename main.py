@@ -60,8 +60,11 @@ sample_images, sample_part1_images, sample_part2_images, sample_part3_images, sa
 
 ''' Main Training Loop Here '''
 # compcar (4, 2) try !
-m_weight1 = np.logspace(-1.5, -3.5, num=opts.epoch)
-m_weight2 = np.logspace(-2, -4, num=opts.epoch)
+# m_weight1 = np.logspace(-1.5, -3.5, num=opts.epoch)
+# m_weight2 = np.logspace(-2, -4, num=opts.epoch)
+m_weight_mask = np.logspace(1, 1, num=opts.epoch)
+m_weight_appr = np.logspace(1, 1, num=opts.epoch) * 10
+
 
 start_time = time.time()
 for epoch in range(opts.epoch):
@@ -92,17 +95,20 @@ for epoch in range(opts.epoch):
         train_shuff_images = [get_image(shuff_image_paths[j], opts.image_size, opts.output_size, opts.is_crop, is_flip) for
                         j in range(opts.batch_size)]
 
-        # forward run
+        # Set input images
         model.set_inputs_for_train(train_images, train_shuff_images,
                                    train_part1_images, train_part2_images, train_part3_images,
-                                   train_z, train_gt_masks, m_weight1[epoch],m_weight2[epoch])
-        model.forward()
-        # backward run
-        model.optimize_parameters_D()
-        model.optimize_parameters_G()
+                                   train_z, train_gt_masks, m_weight_mask[epoch],m_weight_appr[epoch])
 
+        # Train D
         model.forward()
-        model.optimize_parameters_G()
+        model.optimize_parameters_D()
+
+        # Train G
+        if (i + 1) % 2 == 0:
+            model.forward()
+            model.optimize_parameters_G()
+
 
         if (i % 100 == 1):
             print('epoch: %02d/%02d, iter: %04d/%04d, d_loss: %f. g_loss_gan: %f, g_loss_appr: %f, g_loss_mask: %f, %f sec'
@@ -115,12 +121,12 @@ for epoch in range(opts.epoch):
             if opts.visualize:
                 model.set_inputs_for_train(sample_images, sample_images,
                                            sample_part1_images, sample_part2_images, sample_part3_images,
-                                           sample_z, sample_gt_masks, m_weight1[epoch],m_weight2[epoch])
+                                           sample_z, sample_gt_masks, m_weight_mask[epoch],m_weight_appr[epoch])
                 model.forward()
                 model.visualize(win_offset=0)
                 model.set_inputs_for_train(test_images, test_images,
                                            test_part1_images, test_part2_images, test_part3_images,
-                                           test_z, test_gt_masks, m_weight1[epoch],m_weight2[epoch])
+                                           test_z, test_gt_masks, m_weight_mask[epoch],m_weight_appr[epoch])
                 model.forward()
                 model.visualize(win_offset=100)
 
@@ -128,12 +134,12 @@ for epoch in range(opts.epoch):
         if (i % 200 == 1):
             model.set_inputs_for_train(sample_images, sample_images,
                                        sample_part1_images, sample_part2_images, sample_part3_images,
-                                       sample_z, sample_gt_masks, m_weight1[epoch],m_weight2[epoch])
+                                       sample_z, sample_gt_masks, m_weight_mask[epoch],m_weight_appr[epoch])
             model.forward()
             model.save_images(epoch, i, is_test=False)
             model.set_inputs_for_train(test_images, test_images,
                                        test_part1_images, test_part2_images, test_part3_images,
-                                       test_z, test_gt_masks, m_weight1[epoch],m_weight2[epoch])
+                                       test_z, test_gt_masks, m_weight_mask[epoch],m_weight_appr[epoch])
             model.forward()
             model.save_images(epoch, i, is_test=True)
 
