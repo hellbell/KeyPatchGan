@@ -26,7 +26,7 @@ class KeyPatchGanModel():
         self.output_size = self.opts.output_size
         self.z_dim       = self.opts.z_dim
 
-        save_dir_str = str(opts.model_structure) + 'o' + str(opts.output_size) + '_b' + str(opts.batch_size) + \
+        save_dir_str = str(opts.model_structure) + '_o' + str(opts.output_size) + '_b' + str(opts.batch_size) + \
                         '_df' + str(opts.conv_dim) + '_epch' + str(opts.epoch)
         self.sample_dir = os.path.join(opts.sample_dir, opts.db_name, save_dir_str)
         self.test_dir = os.path.join(opts.test_dir, opts.db_name, save_dir_str)
