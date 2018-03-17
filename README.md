@@ -19,16 +19,20 @@
 Download dataset via visiting [celebA](http://mmlab.ie.cuhk.edu.hk/projects/CelebA.html) or [CompCar](http://mmlab.ie.cuhk.edu.hk/datasets/comp_cars/index.html).
 
 For celebA dataset,
+
 You can download using ```download.py```
+
 ```> python download.py celebA```
 
 For compcar dataset,
 Download the entire compcar dataset and some pre-processing is required.
+
 You should crop the car patches using the ground truth bounding boxes, resize them ```128*128``` resolution, and save them in a single directory.
 
 
 ## Key-patches
 We already extracted key patches from celebA and compcar dataset and save the bounding box coordinates to ```celebA_allbbs.mat``` and ```compcar_allbbs.mat```.
+
 You can extract key patches and use your own key patches.
 
 
@@ -37,6 +41,7 @@ Run
 ```
 python main.py --db_name=celebA --dataset_root=YOUR_DATA_ROOT --is_crop=True --image_size=108 --output_size=64 --model_structure=unet
 ```
+
 The resolution of output image can be enlarged by ```--output_size=128``` or ```--output_size=256``` options.
 
 
