@@ -28,7 +28,7 @@ class Options():
         self.parser.add_argument('--is_crop',       default=True)
         self.parser.add_argument('--cont_train', default=False)
         self.parser.add_argument('--start_epoch', default=0)
-        self.parser.add_argument('--model_structure', default='resblock')
+        self.parser.add_argument('--model_structure', default='unet')
         self.parser.add_argument('--res_n_repeat', type=int, default=4)
         self.parser.add_argument('--res_n_downsample', type=int, default=3)
         self.parser.add_argument('--res_n_upsample', type=int, default=3)

@@ -60,10 +60,10 @@ sample_images, sample_part1_images, sample_part2_images, sample_part3_images, sa
 
 ''' Main Training Loop Here '''
 # compcar (4, 2) try !
-# m_weight1 = np.logspace(-1.5, -3.5, num=opts.epoch)
-# m_weight2 = np.logspace(-2, -4, num=opts.epoch)
-m_weight_mask = np.logspace(2, 2, num=opts.epoch)
-m_weight_appr = np.logspace(2, 2, num=opts.epoch)
+m_weight_mask = np.logspace(-2, -4, num=opts.epoch)
+m_weight_appr = np.logspace(-2, -4, num=opts.epoch)
+# m_weight_mask = np.logspace(0, 0, num=opts.epoch)
+# m_weight_appr = np.logspace(0, 0, num=opts.epoch)
 
 
 start_time = time.time()

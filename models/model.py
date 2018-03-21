@@ -99,9 +99,9 @@ class KeyPatchGanModel():
                 torch.cuda.set_device(self.opts.gpu_id)
 
         # define optimizer
-        self.criterionMask = torch.nn.L1Loss()
-        self.criterionAppr = torch.nn.L1Loss()
-        self.criterionGAN = torch.nn.BCEWithLogitsLoss()
+        self.criterionMask = torch.nn.L1Loss(size_average=False)
+        self.criterionAppr = torch.nn.L1Loss(size_average=False)
+        self.criterionGAN = torch.nn.BCELoss()
 
         self.optimizer_G = torch.optim.Adam(itertools.chain(self.net_generator.parameters(),
                                                             self.net_part_encoder.parameters(),
