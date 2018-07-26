@@ -1,6 +1,7 @@
-# KeyPatchGan
+# A PyTorch implementation of KeyPatchGan (ECCV 2018)
 
-- This is a pytorch implementation of the paper, Unsupervised Holistic Image Generation from Key Local Patches. (https://arxiv.org/abs/1703.10730)
+- This is a pytorch implementation of the paper, **Unsupervised Holistic Image Generation from Key Local Patches. (ECCV 2018)**.
+- Paper link: https://arxiv.org/abs/1703.10730 (warning: this is an old version. Latest version will be uploaded!)
 
 # Concept
 ![alt text](https://github.com/hellbell/KeyPatchGan/blob/master/imgs/keypatchgan.PNG "Main Framework")
